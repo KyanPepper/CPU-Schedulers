@@ -1,16 +1,18 @@
 CC = gcc
-CFLAGS = -g
+CFLAGS = -g -Wall -Werror -std=c99
+
+all: scheduler
 
 scheduler: scheduler.c
-	$(CC) scheduler.c -o scheduler
+	$(CC) $(CFLAGS) -o scheduler scheduler.c schedulerio.c -lm
 
-test01:
+test01: scheduler
 	./scheduler sample_io/input/input-1
 
-test02:
+test02: scheduler
 	./scheduler sample_io/input/input-2
 
-test03:
+test03: scheduler
 	./scheduler sample_io/input/input-3
 
 clean:
