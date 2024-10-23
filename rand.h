@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
-
+#include <stdint.h>
 /**
  * Reads a random non-negative integer X from a file named random-numbers.
  * Returns the CPU Burst: : 1 + (random-number-from-file % upper_bound)
