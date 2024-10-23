@@ -4,6 +4,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+typedef enum Status
+{
+    NOT_STARTED = 0,
+    READY = 1,
+    RUNNING = 2,
+    BLOCKED = 3,
+    TERMINATED = 4
+} Status;
 typedef struct Process
 {
     uint32_t A;         // A: Arrival time of the process
@@ -12,7 +20,7 @@ typedef struct Process
     uint32_t M;         // M: Multiplier of CPU burst time
     uint32_t processID; // The process ID given upon input read
 
-    uint8_t status; // 0 is not started, 1 is ready, 2 is running, 3 is blocked, 4 is terminated
+    Status status; // The current status of the process
 
     int32_t finishingTime;         // The cycle when the the process finishes (initially -1)
     uint32_t currentCPUTimeRun;    // The amount of time the process has already run (time in running state)
@@ -62,7 +70,6 @@ extern void printProcessSpecifics(Process process_list[], SchedulerStats stats);
  */
 extern void printSummaryData(Process process_list[], SchedulerStats stats);
 
-extern void printCycle(Process process_list[], SchedulerStats stats);
 
 // Creates a process array in memory from the input file
-extern Process* readAllProcessesFromFile(FILE *input_file, SchedulerStats *stats);
+extern Process *readAllProcessesFromFile(FILE *input_file, SchedulerStats *stats);

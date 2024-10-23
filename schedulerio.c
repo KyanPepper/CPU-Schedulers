@@ -90,7 +90,7 @@ Process createProcess(FILE *input)
 {
     Process process;
     fscanf(input, " (%u %u %u %u)", &process.A, &process.B, &process.C, &process.M);
-    process.status = 0;
+    process.status = NOT_STARTED;
     process.finishingTime = -1;
     process.currentCPUTimeRun = 0;
     process.currentIOBlockedTime = 0;
