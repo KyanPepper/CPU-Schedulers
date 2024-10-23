@@ -1,0 +1,17 @@
+{
+    "configurations": [
+        {
+            "name": "(lldb) Launch",
+            "targetArchitecture": "ARM",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/scheduler",         
+            "args": ["sample_io/input/input-3"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "lldb"        
+        }
+    ]
+}

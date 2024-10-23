@@ -30,14 +30,26 @@ static void setBursts(Process *p)
 void fcfs(Process *p_list, SchedulerStats *stats)
 {
 
+    printf("**** \n\n\n\nFirst Come First Serve\n");
     while (stats->TOTAL_FINISHED_PROCESSES < stats->TOTAL_CREATED_PROCESSES)
     {
         Process *rp = NULL; // Running process
         Process *p = NULL;  // Process
 
-        for (int i = 0; i < stats->TOTAL_CREATED_PROCESSES; i++)
+        for (uint32_t i = 0; i < stats->TOTAL_CREATED_PROCESSES; i++)
         {
-            p = &p_list[i];
+            uint32_t index = i;
+            if (rp != NULL)
+            {
+                index = (rp - p_list) + i;
+            }
+
+            if (index >= stats->TOTAL_CREATED_PROCESSES) // Wrap the index if it goes beyond the number of processes
+            {
+                index -= stats->TOTAL_CREATED_PROCESSES; // Adjust index to wrap around to the beginning
+            }
+
+            p = &p_list[index];
 
             // Terminated
             if (p->status == TERMINATED)
@@ -59,14 +71,13 @@ void fcfs(Process *p_list, SchedulerStats *stats)
 
                 stats->TOTAL_NUMBER_OF_CYCLES_SPENT_BLOCKED++;
             }
-
             // if the process is not started and the arrival time is the current cycle
-            else if (p->status == NOT_STARTED && p->A == stats->CURRENT_CYCLE)
+            else if (p->status == NOT_STARTED)
             {
                 p->status = READY;
                 stats->TOTAL_STARTED_PROCESSES++;
+                p->isFirstTimeRunning = 1;
             }
-            // Ready
             if (p->status == READY)
             {
                 // Ready -> Running
@@ -86,6 +97,9 @@ void fcfs(Process *p_list, SchedulerStats *stats)
             {
                 p->currentCPUTimeRun++;
                 p->CPUBurst--;
+                stats->TOTAL_STARTED_PROCESSES += p->isFirstTimeRunning;
+                p->isFirstTimeRunning = 0;
+
                 if (p->currentCPUTimeRun >= p->C)
                 {
                     p->status = TERMINATED;
@@ -111,9 +125,114 @@ void fcfs(Process *p_list, SchedulerStats *stats)
     printProcessSpecifics(p_list, *stats);
     printSummaryData(p_list, *stats);
 }
+
+void sjf(Process *p_list, SchedulerStats *stats)
+{
+
+    printf("**** \n\n\n\n Shortest Job First\n");
+    Process *p = NULL;
+    while (stats->TOTAL_FINISHED_PROCESSES < stats->TOTAL_CREATED_PROCESSES)
+    {
+        Process *s = NULL;
+
+        for (uint32_t i = 0; i < stats->TOTAL_CREATED_PROCESSES; i++)
+        {
+            p = &p_list[i];
+
+            // Terminated
+            if (p->status == TERMINATED)
+            {
+                continue;
+            }
+
+            // Blocked
+            if (p->status == BLOCKED)
+            {
+                p->currentIOBlockedTime++;
+                p->IOBurst--;
+
+                // Blocked -> Ready
+                if (p->IOBurst <= 0)
+                {
+                    p->status = READY;
+                }
+
+                stats->TOTAL_NUMBER_OF_CYCLES_SPENT_BLOCKED++;
+            }
+
+            // Unstarted -> Ready
+            else if (p->status == NOT_STARTED && p->A == stats->CURRENT_CYCLE)
+            {
+                p->status = READY;
+                stats->TOTAL_STARTED_PROCESSES++;
+                p->isFirstTimeRunning = 1;
+            }
+
+            // Ready
+            if (p->status == READY)
+            {
+                if (s == NULL)
+                {
+                    s = p; // If sj is NULL, assign p to sj
+                }
+                else
+                {
+                    // Compare the remaining CPU time of p and sj
+                    if ((p->C - p->currentCPUTimeRun) < (s->C - s->currentCPUTimeRun))
+                    {
+                        s = p; // If p has less remaining CPU time than sj, assign p to sj
+                    }
+                }
+
+                p->currentWaitingTime++;
+            }
+
+            // Running
+            else if (p->status == RUNNING)
+
+            {
+                p->currentCPUTimeRun++;
+                p->CPUBurst--;
+                stats->TOTAL_STARTED_PROCESSES += p->isFirstTimeRunning;
+                p->isFirstTimeRunning = 0;
+
+                // Running -> Terminate
+                if (p->currentCPUTimeRun >= p->C)
+                {
+                    p->status = TERMINATED;
+                    p->finishingTime = stats->CURRENT_CYCLE;
+
+                    stats->TOTAL_FINISHED_PROCESSES++;
+                }
+
+                // Running -> Block
+                else if (p->CPUBurst <= 0)
+                {
+                    p->status = BLOCKED;
+                }
+            }
+        }
+
+        // Ready -> Running for Shortest Job
+        if (s != NULL)
+        {
+            setBursts(s);
+            s->status = RUNNING;
+            s->currentWaitingTime--;
+        }
+
+        stats->CURRENT_CYCLE++;
+    }
+    printStart(p_list, *stats);
+    printFinal(p_list, *stats);
+    printProcessSpecifics(p_list, *stats);
+    printSummaryData(p_list, *stats);
+}
+
 // Comparator function for sorting by arrival time, with tiebreaker by process ID
 int compareArrivalTime(const void *a, const void *b)
 {
+
     Process *p1 = (Process *)a;
     Process *p2 = (Process *)b;
 
@@ -135,6 +254,7 @@ int main(int argc, char *argv[])
     }
     // Open the file
     FILE *stream1 = fopen(argv[1], "r");
+    FILE *stream2 = fopen(argv[1], "r");
     if (stream1 == NULL)
     {
         printf("Error: Cannot open file %s\n", argv[1]);
@@ -143,21 +263,19 @@ int main(int argc, char *argv[])
 
     // Initialize the stats
     SchedulerStats fcfs_stats = initStats();
+    SchedulerStats sjf_stats = initStats();
 
     // Read all processes from the file
     Process *fcfs_list = readAllProcessesFromFile(stream1, &fcfs_stats);
-
+    Process *sjf_list = readAllProcessesFromFile(stream2, &sjf_stats);
     fclose(stream1);
-
-    // Set CPU bursts for each process
-    for (uint32_t i = 0; i < fcfs_stats.TOTAL_CREATED_PROCESSES; i++)
-    {
-        setBursts(&fcfs_list[i]);
-    }
+    fclose(stream2);
 
     // Run the FCFS scheduler
     qsort(fcfs_list, fcfs_stats.TOTAL_CREATED_PROCESSES, sizeof(Process), compareArrivalTime);
     fcfs(fcfs_list, &fcfs_stats);
+    qsort(sjf_list, sjf_stats.TOTAL_CREATED_PROCESSES, sizeof(Process), compareArrivalTime);
+    sjf(sjf_list, &sjf_stats);
 
     return 0;
 }
